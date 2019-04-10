@@ -11,6 +11,8 @@ import { isUrlExtension } from "../source";
 
 import type { TreeNode } from "./types";
 
+import type { Source } from "../../types";
+
 /*
  * Gets domain from url (without www prefix)
  */
@@ -35,12 +37,8 @@ function isExactDomainMatch(part: string, debuggeeHost: string): boolean {
     : part === debuggeeHost;
 }
 
-function isNgBundler(part: string): boolean {
-  return part === "ng://";
-}
-
-function isWebpackBundler(part: string): boolean {
-  return part === "webpack://";
+function isBundler(part: string): boolean {
+  return part === "ng://" || part === "webpack://";
 }
 
 /*
@@ -100,7 +98,7 @@ function createTreeNodeMatcherWithDebuggeeHost(
   };
 }
 
-function createTreeNodeMatcherWithNgBundler(
+function createTreeNodeMatcherWithBundler(
   debuggeeHost: ?string
 ): FindNodeInContentsMatcher {
   return (node: TreeNode) => {
@@ -110,24 +108,7 @@ function createTreeNodeMatcherWithNgBundler(
     if (debuggeeHost && isExactDomainMatch(node.name, debuggeeHost)) {
       return -1;
     }
-    return isNgBundler(node.name) ? 0 : 1;
-  };
-}
-
-function createTreeNodeMatcherWithWebpackBundler(
-  debuggeeHost: ?string
-): FindNodeInContentsMatcher {
-  return (node: TreeNode) => {
-    if (node.name === IndexName) {
-      return -1;
-    }
-    if (debuggeeHost && isExactDomainMatch(node.name, debuggeeHost)) {
-      return -1;
-    }
-    if (isNgBundler(node.name)) {
-      return -1;
-    }
-    return isWebpackBundler(node.name) ? 0 : 1;
+    return isBundler(node.name) ? 0 : 1;
   };
 }
 
@@ -141,10 +122,7 @@ function createTreeNodeMatcherWithExtension(
     if (debuggeeHost && isExactDomainMatch(node.name, debuggeeHost)) {
       return -1;
     }
-    if (isNgBundler(node.name)) {
-      return -1;
-    }
-    if (isWebpackBundler(node.name)) {
+    if (isBundler(node.name)) {
       return -1;
     }
     return isUrlExtension(node.name) ? 0 : 1;
@@ -154,7 +132,9 @@ function createTreeNodeMatcherWithExtension(
 function createTreeNodeMatcherWithNameAndOther(
   part: string,
   isDir: boolean,
-  debuggeeHost: ?string
+  debuggeeHost: ?string,
+  source?: Source,
+  sortByUrl?: boolean
 ): FindNodeInContentsMatcher {
   return (node: TreeNode) => {
     if (node.name === IndexName) {
@@ -163,10 +143,7 @@ function createTreeNodeMatcherWithNameAndOther(
     if (debuggeeHost && isExactDomainMatch(node.name, debuggeeHost)) {
       return -1;
     }
-    if (isNgBundler(node.name)) {
-      return -1;
-    }
-    if (isWebpackBundler(node.name)) {
+    if (isBundler(node.name)) {
       return -1;
     }
     if (isUrlExtension(node.name)) {
@@ -177,6 +154,9 @@ function createTreeNodeMatcherWithNameAndOther(
       return -1;
     } else if (!nodeIsDir && isDir) {
       return 1;
+    }
+    if (sortByUrl && node.type === "source" && source) {
+      return node.contents.url.localeCompare(source.url);
     }
 
     return node.name.localeCompare(part);
@@ -194,7 +174,9 @@ function createTreeNodeMatcherWithNameAndOther(
 export function createTreeNodeMatcher(
   part: string,
   isDir: boolean,
-  debuggeeHost: ?string
+  debuggeeHost: ?string,
+  source?: Source,
+  sortByUrl?: boolean
 ): FindNodeInContentsMatcher {
   if (part === IndexName) {
     // Specialied matcher, when we are looking for "(index)" position.
@@ -206,14 +188,9 @@ export function createTreeNodeMatcher(
     return createTreeNodeMatcherWithDebuggeeHost(debuggeeHost);
   }
 
-  if (isNgBundler(part)) {
+  if (isBundler(part)) {
     // Specialied matcher, when we are looking for angular bundler.
-    return createTreeNodeMatcherWithNgBundler(debuggeeHost);
-  }
-
-  if (isWebpackBundler(part)) {
-    // Specialied matcher, when we are looking for webpack bundler.
-    return createTreeNodeMatcherWithWebpackBundler(debuggeeHost);
+    return createTreeNodeMatcherWithBundler(debuggeeHost);
   }
 
   if (isUrlExtension(part)) {
@@ -222,5 +199,11 @@ export function createTreeNodeMatcher(
   }
 
   // Rest of the cases, without mentioned above.
-  return createTreeNodeMatcherWithNameAndOther(part, isDir, debuggeeHost);
+  return createTreeNodeMatcherWithNameAndOther(
+    part,
+    isDir,
+    debuggeeHost,
+    source,
+    sortByUrl
+  );
 }
