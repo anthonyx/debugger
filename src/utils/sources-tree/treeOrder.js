@@ -107,12 +107,12 @@ function createTreeNodeMatcherWithNameAndOther(
     if (debuggeeHost && isExactDomainMatch(node.name, debuggeeHost)) {
       return -1;
     }
-    const nodeIsDir = nodeHasChildren(node);
-    if (nodeIsDir && !isDir) {
-      return -1;
-    } else if (!nodeIsDir && isDir) {
-      return 1;
-    }
+    // const nodeIsDir = nodeHasChildren(node);
+    // if (nodeIsDir && !isDir) {
+    //   return -1;
+    // } else if (!nodeIsDir && isDir) {
+    //   return 1;
+    // }
     if (sortByUrl && node.type === "source" && source) {
       return node.contents.url.localeCompare(source.url);
     }
