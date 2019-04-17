@@ -13,6 +13,18 @@ import type { TreeNode } from "./types";
 
 import type { Source } from "../../types";
 
+export function getDomain(url?: string): ?string {
+  // TODO: define how files should be ordered on the browser debugger
+  if (!url) {
+    return null;
+  }
+  const { host } = parse(url);
+  if (!host) {
+    return null;
+  }
+  return host.startsWith("www.") ? host.substr("www.".length) : host;
+}
+
 /*
  * Checks if node name matches Angular Bundler.
  */
@@ -82,11 +94,13 @@ function matchWithException(part, debuggeeHost) {
   }
 
   if (isAngularBundler(part)) {
-    return true;
+    console.log(part);
+    // return true;
   }
 
   if (isWebpackBundler(part)) {
-    return true;
+    console.log(part);
+    // return true;
   }
 
   if (isUrlExtension(part)) {
