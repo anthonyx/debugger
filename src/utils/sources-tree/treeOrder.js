@@ -6,7 +6,7 @@
 
 import { parse } from "../url";
 
-import { nodeHasChildren, isExactUrlMatch } from "./utils";
+import { nodeHasChildren } from "./utils";
 import { isUrlExtension } from "../source";
 
 import type { TreeNode } from "./types";
@@ -23,6 +23,12 @@ export function getDomain(url?: string): ?string {
     return null;
   }
   return host.startsWith("www.") ? host.substr("www.".length) : host;
+}
+
+function isExactDomainMatch(part: string, debuggeeHost: string): boolean {
+  return part.startsWith("www.")
+    ? part.substr("www.".length) === debuggeeHost
+    : part === debuggeeHost;
 }
 
 /*
@@ -89,7 +95,7 @@ function matchWithException(part, debuggeeHost) {
     return true;
   }
 
-  if (debuggeeHost && isExactUrlMatch(part, debuggeeHost)) {
+  if (debuggeeHost && isExactDomainMatch(part, debuggeeHost)) {
     return true;
   }
 
@@ -119,7 +125,7 @@ export function createTreeNodeMatcher(
 ): FindNodeInContentsMatcher {
   return (node: TreeNode) => {
     // Check if part and node.name are equal
-    if (isExactUrlMatch(part, node.name)) {
+    if (isExactDomainMatch(part, node.name)) {
       return 0;
     }
 
