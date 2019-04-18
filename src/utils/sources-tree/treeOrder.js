@@ -7,7 +7,6 @@
 import { parse } from "../url";
 
 import { nodeHasChildren } from "./utils";
-import { isUrlExtension } from "../source";
 
 import type { TreeNode } from "./types";
 
@@ -29,20 +28,6 @@ function isExactDomainMatch(part: string, debuggeeHost: string): boolean {
   return part.startsWith("www.")
     ? part.substr("www.".length) === debuggeeHost
     : part === debuggeeHost;
-}
-
-/*
- * Checks if node name matches Angular Bundler.
- */
-function isAngularBundler(part: string): boolean {
-  return part === "ng://";
-}
-
-/*
- * Checks if node name matches Webpack Bundler.
- */
-function isWebpackBundler(part: string): boolean {
-  return part === "webpack://";
 }
 
 /*
@@ -96,20 +81,6 @@ function matchWithException(part, debuggeeHost) {
   }
 
   if (debuggeeHost && isExactDomainMatch(part, debuggeeHost)) {
-    return true;
-  }
-
-  if (isAngularBundler(part)) {
-    console.log(part);
-    // return true;
-  }
-
-  if (isWebpackBundler(part)) {
-    console.log(part);
-    // return true;
-  }
-
-  if (isUrlExtension(part)) {
     return true;
   }
   
