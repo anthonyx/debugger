@@ -12,9 +12,6 @@ import type { TreeNode } from "./types";
 
 import type { Source } from "../../types";
 
-/*
- * Gets domain from url (without www prefix)
- */
 export function getDomain(url?: string): ?string {
   // TODO: define how files should be ordered on the browser debugger
   if (!url) {
@@ -27,9 +24,6 @@ export function getDomain(url?: string): ?string {
   return host.startsWith("www.") ? host.substr("www.".length) : host;
 }
 
-/*
- * Checks if node name matches debugger host/domain.
- */
 function isExactDomainMatch(part: string, debuggeeHost: string): boolean {
   return part.startsWith("www.")
     ? part.substr("www.".length) === debuggeeHost
@@ -78,57 +72,21 @@ export function findNodeInContents(
 
 const IndexName = "(index)";
 
-function createTreeNodeMatcherWithIndex(): FindNodeInContentsMatcher {
-  return (node: TreeNode) => (node.name === IndexName ? 0 : 1);
-}
-
-function createTreeNodeMatcherWithDebuggeeHost(
-  debuggeeHost: string
-): FindNodeInContentsMatcher {
-  return (node: TreeNode) => {
-    if (node.name === IndexName) {
-      return -1;
-    }
-    return isExactDomainMatch(node.name, debuggeeHost) ? 0 : 1;
-  };
-}
-
-function createTreeNodeMatcherWithNameAndOther(
-  part: string,
-  isDir: boolean,
-  debuggeeHost: ?string,
-  source?: Source,
-  sortByUrl?: boolean
-): FindNodeInContentsMatcher {
-  return (node: TreeNode) => {
-    if (node.name === IndexName) {
-      return -1;
-    }
-    if (debuggeeHost && isExactDomainMatch(node.name, debuggeeHost)) {
-      return -1;
-    }
-    const nodeIsDir = nodeHasChildren(node);
-    if (nodeIsDir && !isDir) {
-      return -1;
-    } else if (!nodeIsDir && isDir) {
-      return 1;
-    }
-    if (sortByUrl && node.type === "source" && source) {
-      return node.contents.url.localeCompare(source.url);
-    }
-
-    return node.name.localeCompare(part);
-  };
-}
-
 /*
- * Creates a matcher for findNodeInContents.
- * The sorting order of nodes during comparison is:
- * - "(index)" node
- * - root node with the debuggee host/domain
- * - hosts/directories (not files) sorted by name
- * - files sorted by name
+ * Check if part matches with any predetermined exceptions
  */
+function matchWithException(part, debuggeeHost) {
+  if (part === IndexName) {
+    return true;
+  }
+
+  if (debuggeeHost && isExactDomainMatch(part, debuggeeHost)) {
+    return true;
+  }
+  
+  return false;
+}
+
 export function createTreeNodeMatcher(
   part: string,
   isDir: boolean,
@@ -136,22 +94,34 @@ export function createTreeNodeMatcher(
   source?: Source,
   sortByUrl?: boolean
 ): FindNodeInContentsMatcher {
-  if (part === IndexName) {
-    // Specialied matcher, when we are looking for "(index)" position.
-    return createTreeNodeMatcherWithIndex();
-  }
+  return (node: TreeNode) => {
+    // Check if part and node.name are equal
+    if (isExactDomainMatch(part, node.name)) {
+      return 0;
+    }
 
-  if (debuggeeHost && isExactDomainMatch(part, debuggeeHost)) {
-    // Specialied matcher, when we are looking for domain position.
-    return createTreeNodeMatcherWithDebuggeeHost(debuggeeHost);
-  }
+    // Check if node is an exception
+    if (matchWithException(node.name, debuggeeHost)) {
+      return -1;
+    }
 
-  // Rest of the cases, without mentioned above.
-  return createTreeNodeMatcherWithNameAndOther(
-    part,
-    isDir,
-    debuggeeHost,
-    source,
-    sortByUrl
-  );
+    // Check if part is an exception
+    if (matchWithException(part, debuggeeHost)) {
+      return 1;
+    }
+
+    // Sort directories before files
+    const nodeIsDir = nodeHasChildren(node);
+    if(!nodeIsDir === isDir) {
+      return nodeIsDir && !isDir ? -1 : 1;
+    }
+
+    // Sort by url if files have the same name
+    if (sortByUrl && node.type === "source" && source) {
+      return node.contents.url.localeCompare(source.url);
+    }
+
+    // Compare locally
+    return node.name.localeCompare(part);
+  };
 }
